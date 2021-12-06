@@ -1,6 +1,8 @@
 import * as THREE from 'three'
+import Stats from 'three/examples/jsm/libs/stats.module'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { WEBGL } from './webgl'
-import './modal'
+// import './modal'
 
 if (WEBGL.isWebGLAvailable()) {
   var camera, scene, renderer
@@ -14,8 +16,14 @@ if (WEBGL.isWebGLAvailable()) {
 
   var objects = []
 
+  var stats;
+  var controls;
+
+  
+
   init()
   render()
+  animate()
 
   function init() {
     camera = new THREE.PerspectiveCamera(
@@ -30,28 +38,23 @@ if (WEBGL.isWebGLAvailable()) {
     scene = new THREE.Scene()
     scene.background = new THREE.Color(0xf0f0f0)
 
-    var rollOverGeo = new THREE.BoxBufferGeometry(50, 50, 50)
-    rollOverMaterial = new THREE.MeshBasicMaterial({
-      color: 0xff0000,
-      opacity: 0.5,
-      transparent: true,
-    })
-    rollOverMesh = new THREE.Mesh(rollOverGeo, rollOverMaterial)
-    scene.add(rollOverMesh)
-
+    // stats = new Stats()
+    // stats.update();
+    // document.body.appendChild(stats.dom)
+    
     cubeGeo = new THREE.BoxBufferGeometry(50, 50, 50)
     cubeMaterial = new THREE.MeshLambertMaterial({
       color: 0xfeb74c,
       map: new THREE.TextureLoader().load('static/textures/square.png'),
     })
 
-    var gridHelper = new THREE.GridHelper(1000, 20)
-    scene.add(gridHelper)
+    // var gridHelper = new THREE.GridHelper(8000, 160)
+    // scene.add(gridHelper)
 
     raycaster = new THREE.Raycaster()
     mouse = new THREE.Vector2()
 
-    var geometry = new THREE.PlaneBufferGeometry(1000, 1000)
+    var geometry = new THREE.PlaneBufferGeometry(8000, 8000)
     geometry.rotateX(-Math.PI / 2)
 
     plane = new THREE.Mesh(
@@ -74,12 +77,34 @@ if (WEBGL.isWebGLAvailable()) {
     renderer.setSize(window.innerWidth, window.innerHeight)
     document.body.appendChild(renderer.domElement)
 
+    // Orbit Controls configs
+    controls   = new OrbitControls (camera, renderer.domElement)
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.10;
+    controls.enablePan     = false;
+    // controls.minDistance   = 1;
+    // controls.maxDistance   = 10;
+
     document.addEventListener('mousemove', onDocumentMouseMove, false)
     document.addEventListener('mousedown', onDocumentMouseDown, false)
     document.addEventListener('keydown', onDocumentKeyDown, false)
     document.addEventListener('keyup', onDocumentKeyUp, false)
     window.addEventListener('resize', onWindowResize, false)
   }
+
+  function animate() {
+
+    // stats.begin();
+    // stats.update()
+    // stats.end();
+  
+    // controls.update();
+    
+    requestAnimationFrame( animate );
+  
+  }
+  
+  requestAnimationFrame( animate );
 
   function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight
@@ -91,27 +116,8 @@ if (WEBGL.isWebGLAvailable()) {
   function onDocumentMouseMove(event) {
     event.preventDefault()
 
-    mouse.set(
-      (event.clientX / window.innerWidth) * 2 - 1,
-      -(event.clientY / window.innerHeight) * 2 + 1
-    )
-
-    raycaster.setFromCamera(mouse, camera)
-
-    var intersects = raycaster.intersectObjects(objects)
-
-    if (intersects.length > 0) {
-      var intersect = intersects[0]
-
-      rollOverMesh.position.copy(intersect.point).add(intersect.face.normal)
-      rollOverMesh.position
-        .divideScalar(50)
-        .floor()
-        .multiplyScalar(50)
-        .addScalar(25)
-    }
-
     render()
+
   }
 
   function onDocumentMouseDown(event) {
@@ -126,7 +132,8 @@ if (WEBGL.isWebGLAvailable()) {
 
     var intersects = raycaster.intersectObjects(objects)
 
-    if (intersects.length > 0) {
+    if (objects.length < 10) {
+      console.log("adding curves to scene...")
       var intersect = intersects[0]
 
       if (isShiftDown) {
@@ -137,16 +144,45 @@ if (WEBGL.isWebGLAvailable()) {
         }
 
       } else {
-        var voxel = new THREE.Mesh(cubeGeo, cubeMaterial)
-        voxel.position.copy(intersect.point).add(intersect.face.normal)
-        voxel.position.divideScalar(50).floor().multiplyScalar(50).addScalar(25)
-        scene.add(voxel)
 
-        objects.push(voxel)
+        // x 2
+        var max = 475
+        var min = -3975
+        var step = 50
+
+        for (let i=0;i<160;i++) {
+
+          for (let j=0;j<160;j++) {
+
+            const curve = new THREE.CubicBezierCurve3(
+              new THREE.Vector3( -10, 0, 0 ),
+              new THREE.Vector3( -5, 15, 0 ),
+              new THREE.Vector3( 20, 15, 0 ),
+            );
+            
+            const points = curve.getPoints( 50 )
+            const lineGeometry = new THREE.BufferGeometry().setFromPoints( points )
+            const lineMaterial = new THREE.LineBasicMaterial( { color : 0xff0000 } )
+    
+            // Create the final object to add to the scene
+            const line = new THREE.Line( lineGeometry, lineMaterial )
+    
+            line.position.copy(new THREE.Vector3((min + step * i), 25 , (min + step * j)))
+    
+            scene.add(line)
+    
+            objects.push(line)
+
+          }
+
+        }
+
       }
 
       render()
+
     }
+
   }
 
   function onDocumentKeyDown(event) {
